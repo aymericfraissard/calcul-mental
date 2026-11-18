@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Entraînement au calcul mental : additions, soustractions, multiplications et divisions chronométrées.">
+  <title>Calcul mental</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Chargés dans le <head> pour appliquer le thème avant le premier affichage -->
+  <script src="js/storage.js"></script>
+  <script src="js/theme.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <!-- ========== En-tête ========== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <h1 class="site-title">Calcul mental</h1>
+      <button type="button" class="theme-toggle" id="theme-toggle">
+        <span class="theme-icon" id="icon-moon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </span>
+        <span class="theme-icon" id="icon-sun" aria-hidden="true" hidden>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </span>
+        <span class="theme-toggle-text" id="theme-toggle-text">Thème sombre</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+
+    <!-- ========== Écran 1 : configuration (accueil) ========== -->
+    <section class="screen" id="screen-home" aria-labelledby="home-title">
+      <form class="card" id="config-form" novalidate>
+        <h2 class="card-title" id="home-title" tabindex="-1" data-autofocus>Configuration</h2>
+
+        <fieldset class="field">
+          <legend class="label">Opérations</legend>
+          <div class="chips chips-4">
+            <label class="chip">
+              <input type="checkbox" name="operation" value="add" class="visually-hidden">
+              <span class="chip-face chip-face--stacked"><span class="chip-symbol" aria-hidden="true">+</span>Addition</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" name="operation" value="sub" class="visually-hidden">
+              <span class="chip-face chip-face--stacked"><span class="chip-symbol" aria-hidden="true">−</span>Soustraction</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" name="operation" value="mul" class="visually-hidden">
+              <span class="chip-face chip-face--stacked"><span class="chip-symbol" aria-hidden="true">×</span>Multiplication</span>
+            </label>
+            <label class="chip">
+              <input type="checkbox" name="operation" value="div" class="visually-hidden">
+              <span class="chip-face chip-face--stacked"><span class="chip-symbol" aria-hidden="true">÷</span>Division</span>
+            </label>
+          </div>
+          <p class="hint" id="ops-hint" aria-live="polite"></p>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">Difficulté</legend>
+          <div class="chips chips-3">
+            <label class="chip">
+              <input type="radio" name="difficulty" value="facile" class="visually-hidden">
+              <span class="chip-face">Facile</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="difficulty" value="moyen" class="visually-hidden">
+              <span class="chip-face">Moyen</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="difficulty" value="difficile" class="visually-hidden">
+              <span class="chip-face">Difficile</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">Temps par question</legend>
+          <div class="chips chips-6">
+            <label class="chip">
+              <input type="radio" name="time" value="3" class="visually-hidden">
+              <span class="chip-face">3 s</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="time" value="5" class="visually-hidden">
+              <span class="chip-face">5 s</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="time" value="10" class="visually-hidden">
+              <span class="chip-face">10 s</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="time" value="15" class="visually-hidden">
+              <span class="chip-face">15 s</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="time" value="30" class="visually-hidden">
+              <span class="chip-face">30 s</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="time" value="0" class="visually-hidden">
+              <span class="chip-face">Illimité</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">Type de partie</legend>
+          <div class="chips chips-2">
+            <label class="chip">
+              <input type="radio" name="mode" value="serie" class="visually-hidden">
+              <span class="chip-face">Série</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="mode" value="survie" class="visually-hidden">
+              <span class="chip-face">Survie</span>
+            </label>
+          </div>
+          <p class="hint" id="mode-hint"></p>
+        </fieldset>
+
+        <fieldset class="field" id="count-field">
+          <legend class="label">Nombre de questions</legend>
+          <div class="chips chips-3">
+            <label class="chip">
+              <input type="radio" name="count" value="10" class="visually-hidden">
+              <span class="chip-face">10</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="count" value="20" class="visually-hidden">
+              <span class="chip-face">20</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="count" value="50" class="visually-hidden">
+              <span class="chip-face">50</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <p class="home-record" id="home-record"></p>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary btn-block">Commencer</button>
+          <button type="button" class="btn btn-secondary btn-block" id="btn-open-history">Historique &amp; records</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ========== Écran 2 : historique & records ========== -->
+    <section class="screen" id="screen-history" aria-labelledby="history-title" hidden>
+      <div class="card">
+        <h2 class="card-title" id="history-title" tabindex="-1" data-autofocus>Records par configuration</h2>
+        <p class="empty" id="records-empty">Aucun record pour l'instant. Jouez une partie pour en établir un.</p>
+        <ul class="list" id="records-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">20 dernières parties</h2>
+        <p class="empty" id="history-empty">Aucune partie enregistrée.</p>
+        <ul class="list" id="history-list"></ul>
+        <p class="hint" id="storage-warning" hidden>La sauvegarde locale est indisponible dans ce navigateur : l'historique et les records seront perdus à la fermeture de la page.</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-danger btn-block" id="btn-clear-history">Effacer l'historique</button>
+        <button type="button" class="btn btn-secondary btn-block" id="btn-history-back">Retour à l'accueil</button>
+      </div>
+    </section>
+
+    <!-- ========== Écran 3 : partie en cours ========== -->
+    <section class="screen" id="screen-game" aria-labelledby="game-title" hidden>
+      <h2 class="visually-hidden" id="game-title">Partie en cours</h2>
+
+      <div class="game-topbar">
+        <dl class="stats">
+          <div class="stat">
+            <dt class="stat-label">Question</dt>
+            <dd class="stat-value" id="stat-progress">1</dd>
+          </div>
+          <div class="stat" id="stat-lives-box" hidden>
+            <dt class="stat-label">Vies</dt>
+            <dd class="stat-value">
+              <span class="lives" id="lives" role="img" aria-label="3 vies restantes sur 3">
+                <span class="life"></span><span class="life"></span><span class="life"></span>
+              </span>
+            </dd>
+          </div>
+          <div class="stat">
+            <dt class="stat-label">Score</dt>
+            <dd class="stat-value" id="stat-score">0</dd>
+          </div>
+          <div class="stat">
+            <dt class="stat-label">Série</dt>
+            <dd class="stat-value" id="stat-streak">0</dd>
+          </div>
+        </dl>
+        <button type="button" class="btn-ghost" id="btn-abandon" aria-keyshortcuts="Escape">Abandonner</button>
+      </div>
+
+      <div class="card game-card" id="game-card">
+        <div class="timer" id="timer">
+          <div class="timer-track" aria-hidden="true"><div class="timer-fill" id="timer-fill"></div></div>
+          <span class="timer-count" id="timer-count">10,0 s</span>
+        </div>
+
+        <!-- Affichage visuel du calcul ; la version lue par les lecteurs d'écran est juste dessous -->
+        <p class="question" id="question" aria-hidden="true"><span id="q-a">0</span> <span id="q-op">+</span> <span id="q-b">0</span> = <span class="question-answer" id="q-answer">?</span></p>
+        <p class="visually-hidden" id="question-spoken" aria-live="polite"></p>
+
+        <form class="answer-form" id="answer-form" autocomplete="off" novalidate>
+          <label for="answer-input" class="visually-hidden">Votre réponse</label>
+          <div class="answer-row">
+            <button type="button" class="btn btn-secondary btn-sign" id="btn-sign" aria-label="Changer le signe" hidden>±</button>
+            <input type="text" class="input answer-input" id="answer-input" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" maxlength="7">
+            <button type="submit" class="btn btn-primary btn-submit">Valider</button>
+          </div>
+        </form>
+
+        <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+      </div>
+
+      <p class="game-hint"><kbd>Entrée</kbd> pour valider · <kbd>Échap</kbd> pour abandonner</p>
+    </section>
+
+    <!-- ========== Écran 4 : résultats ========== -->
+    <section class="screen" id="screen-results" aria-labelledby="results-title" hidden>
+      <div class="card results-card">
+        <h2 class="card-title" id="results-title" tabindex="-1" data-autofocus>Résultats</h2>
+        <p class="record-badge" id="record-badge" hidden>Nouveau record !</p>
+        <p class="results-score"><span id="res-score">0</span><span class="results-total"> / <span id="res-total">0</span></span></p>
+        <p class="results-caption">bonnes réponses</p>
+        <p class="results-config" id="res-config"></p>
+        <dl class="results-stats">
+          <div class="results-stat">
+            <dt class="stat-label">Pourcentage</dt>
+            <dd id="res-pct">0 %</dd>
+          </div>
+          <div class="results-stat">
+            <dt class="stat-label">Temps moyen</dt>
+            <dd id="res-avg">—</dd>
+          </div>
+          <div class="results-stat">
+            <dt class="stat-label">Meilleure série</dt>
+            <dd id="res-streak">0</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Questions ratées</h2>
+        <p class="empty" id="missed-empty">Aucune erreur, parfait !</p>
+        <table class="table" id="missed-table">
+          <thead>
+            <tr>
+              <th scope="col">Calcul</th>
+              <th scope="col">Ta réponse</th>
+              <th scope="col">Bonne réponse</th>
+            </tr>
+          </thead>
+          <tbody id="missed-body"></tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary btn-block" id="btn-replay">Rejouer</button>
+        <button type="button" class="btn btn-secondary btn-block" id="btn-results-home">Retour à l'accueil</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========== Boîte de confirmation (abandon, effacement) ========== -->
+  <dialog class="dialog" id="confirm-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-message">
+    <form method="dialog">
+      <h2 class="card-title" id="dialog-title">Confirmer</h2>
+      <p class="dialog-message" id="dialog-message"></p>
+      <div class="dialog-actions">
+        <button type="submit" value="cancel" class="btn btn-secondary" id="dialog-cancel">Annuler</button>
+        <button type="submit" value="confirm" class="btn btn-primary" id="dialog-confirm">Confirmer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/generator.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

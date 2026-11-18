@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tests du générateur — Calcul mental</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/storage.js"></script>
+  <script src="js/theme.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <h1 class="site-title">Calcul mental · Tests</h1>
+      <a class="theme-toggle" href="index.html">Retour à l'application</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" aria-labelledby="tests-title">
+      <h2 class="card-title" id="tests-title">Générateur de questions</h2>
+      <p class="test-summary" id="summary" role="status">Exécution des tests…</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Opération</th>
+            <th scope="col">Difficulté</th>
+            <th scope="col">Questions</th>
+            <th scope="col">Exemple</th>
+            <th scope="col">Statut</th>
+          </tr>
+        </thead>
+        <tbody id="results"></tbody>
+      </table>
+      <ul class="test-failures" id="failures" hidden></ul>
+    </section>
+  </main>
+
+  <script src="js/generator.js"></script>
+  <script>
+    /* Tests du générateur : 1000 questions par combinaison opération × difficulté. */
+    (function () {
+      'use strict';
+
+      const N = 1000;
+      const OPERATIONS = ['add', 'sub', 'mul', 'div'];
+      const DIFFICULTIES = ['facile', 'moyen', 'difficile'];
+      const SYMBOLS = { add: '+', sub: '−', mul: '×', div: '÷' };
+      const LABELS = { add: 'Addition', sub: 'Soustraction', mul: 'Multiplication', div: 'Division', mix: 'Mixte (les 4)' };
+      const MAX_LISTED_FAILURES = 30;
+
+      // Bornes du cahier des charges, recopiées ici volontairement
+      // (indépendantes de generator.js pour que le test ait un sens).
+      const SPEC = {
+        facile:    { addSub: [1, 20],   mul: [[1, 5], [1, 10]],  divisor: [1, 5],  quotientMax: 5,  negative: false },
+        moyen:     { addSub: [10, 100], mul: [[2, 10], [2, 10]], divisor: [2, 10], quotientMax: 10, negative: false },
+        difficile: { addSub: [50, 999], mul: [[2, 20], [2, 20]], divisor: [2, 15], quotientMax: 20, negative: true }
+      };
+
+      const failures = [];
+      let totalQuestions = 0;
+      let totalGroups = 0;
+      let failedGroups = 0;
+
+      function inRange(value, range) {
+        return value >= range[0] && value <= range[1];
+      }
+
+      function expectedAnswer(q) {
+        switch (q.op) {
+          case 'add': return q.a + q.b;
+          case 'sub': return q.a - q.b;
+          case 'mul': return q.a * q.b;
+          case 'div': return q.a / q.b;
+          default: return NaN;
+        }
+      }
+
+      /** Renvoie la liste des problèmes détectés sur une question. */
+      function checkQuestion(q, expectedOp, difficulty) {
+        const errors = [];
+        const spec = SPEC[difficulty];
+        if (expectedOp && q.op !== expectedOp) errors.push('opération inattendue « ' + q.op + ' »');
+        if (q.symbol !== SYMBOLS[q.op]) errors.push('symbole incorrect « ' + q.symbol + ' »');
+        if (![q.a, q.b, q.answer].every(Number.isInteger)) errors.push('valeur non entière');
+        if (q.answer !== expectedAnswer(q)) errors.push('réponse fausse (' + q.answer + ')');
+
+        if (q.op === 'add' || q.op === 'sub') {
+          if (!inRange(q.a, spec.addSub) || !inRange(q.b, spec.addSub)) errors.push('nombres hors bornes');
+        }
+        if (q.op === 'sub' && !spec.negative && q.answer < 0) errors.push('soustraction négative');
+        if (q.op === 'mul') {
+          const t = spec.mul[0];
+          const f = spec.mul[1];
+          const ok = (inRange(q.a, t) && inRange(q.b, f)) || (inRange(q.a, f) && inRange(q.b, t));
+          if (!ok) errors.push('facteurs hors bornes');
+        }
+        if (q.op === 'div') {
+          if (q.b === 0) errors.push('division par 0');
+          else if (q.a % q.b !== 0) errors.push('division non entière');
+          if (!inRange(q.b, spec.divisor)) errors.push('diviseur hors bornes');
+          if (!inRange(q.answer, [1, spec.quotientMax])) errors.push('résultat hors bornes');
+        }
+        return errors;
+      }
+
+      function describe(q) {
+        return q.a + ' ' + q.symbol + ' ' + q.b + ' = ' + q.answer;
+      }
+
+      /** Génère N questions pour un groupe et vérifie chacune d'elles. */
+      function runGroup(operations, expectedOp, difficulty, name) {
+        let groupFailures = 0;
+        let previousKey = null;
+        let sample = null;
+        const seenOps = {};
+        Generator.reset();
+
+        for (let i = 0; i < N; i++) {
+          const q = generateQuestion(operations, difficulty);
+          const key = q.op + ':' + q.a + ':' + q.b;
+          const errors = checkQuestion(q, expectedOp, difficulty);
+          if (key === previousKey) errors.push('même calcul deux fois de suite');
+          if (errors.length > 0) {
+            groupFailures += 1;
+            failures.push(LABELS[name] + ' / ' + difficulty + ' : ' + describe(q) + ' → ' + errors.join(', '));
+          }
+          previousKey = key;
+          seenOps[q.op] = true;
+          if (!sample) sample = q;
+        }
+
+        // En mode mixte, chaque opération doit apparaître au moins une fois
+        operations.forEach(function (op) {
+          if (!seenOps[op]) {
+            groupFailures += 1;
+            failures.push(LABELS[name] + ' / ' + difficulty + ' : l\'opération ' + op + ' n\'apparaît jamais');
+          }
+        });
+
+        totalQuestions += N;
+        totalGroups += 1;
+        if (groupFailures > 0) failedGroups += 1;
+        addRow(LABELS[name], difficulty, sample, groupFailures);
+      }
+
+      /** Les paramètres invalides doivent lever une erreur. */
+      function runValidationTests() {
+        const invalidCalls = [
+          { args: [[], 'facile'], label: 'liste d\'opérations vide' },
+          { args: [['pow'], 'facile'], label: 'opération inconnue' },
+          { args: [['add'], 'expert'], label: 'difficulté inconnue' }
+        ];
+        let groupFailures = 0;
+        invalidCalls.forEach(function (call) {
+          try {
+            generateQuestion(call.args[0], call.args[1]);
+            groupFailures += 1;
+            failures.push('Validation : aucune erreur levée pour ' + call.label);
+          } catch (error) {
+            /* attendu */
+          }
+        });
+        totalGroups += 1;
+        if (groupFailures > 0) failedGroups += 1;
+        addRow('Paramètres invalides', '—', null, groupFailures, invalidCalls.length + ' appels');
+      }
+
+      function addRow(operation, difficulty, sample, failureCount, countLabel) {
+        const row = document.createElement('tr');
+        const cells = [
+          operation,
+          difficulty,
+          countLabel || String(N),
+          sample ? describe(sample) : '—',
+          failureCount === 0 ? 'OK' : failureCount + ' échec(s)'
+        ];
+        cells.forEach(function (text, index) {
+          const cell = document.createElement('td');
+          cell.textContent = text;
+          if (index === cells.length - 1) cell.className = failureCount === 0 ? 'is-right' : 'is-wrong';
+          row.appendChild(cell);
+        });
+        document.getElementById('results').appendChild(row);
+      }
+
+      function showSummary() {
+        const summary = document.getElementById('summary');
+        const ok = failedGroups === 0;
+        summary.className = 'test-summary ' + (ok ? 'is-correct' : 'is-wrong');
+        summary.textContent = ok
+          ? 'Tous les tests sont passés : ' + totalGroups + ' groupes, ' + totalQuestions.toLocaleString('fr-FR') + ' questions vérifiées.'
+          : failedGroups + ' groupe(s) en échec sur ' + totalGroups + ' (' + failures.length + ' problème(s) détecté(s)).';
+
+        const list = document.getElementById('failures');
+        failures.slice(0, MAX_LISTED_FAILURES).forEach(function (text) {
+          const item = document.createElement('li');
+          item.textContent = text;
+          list.appendChild(item);
+        });
+        list.hidden = failures.length === 0;
+        // Exposé pour une vérification automatisée éventuelle
+        window.testResults = { ok: ok, groups: totalGroups, questions: totalQuestions, failures: failures.slice() };
+      }
+
+      DIFFICULTIES.forEach(function (difficulty) {
+        OPERATIONS.forEach(function (op) {
+          runGroup([op], op, difficulty, op);
+        });
+        runGroup(OPERATIONS, null, difficulty, 'mix');
+      });
+      runValidationTests();
+      showSummary();
+    })();
+  </script>
+</body>
+</html>
