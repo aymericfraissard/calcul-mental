@@ -51,7 +51,9 @@
     advanceTimeout: null,  // setTimeout entre le feedback et la question suivante
     advancePending: false, // passage à la suite suspendu pendant une confirmation
     frozenAnswer: '',      // valeur du champ, verrouillée pendant le feedback
-    dialogCallback: null   // action à exécuter à la fermeture de la boîte de dialogue
+    dialogCallback: null,  // action à exécuter à la fermeture de la boîte de dialogue
+    helpHovered: null,     // aide « ? » survolée à la souris
+    helpPinned: null       // aide « ? » ouverte au clic, au toucher ou au clavier
   };
 
   /** Références vers les éléments du DOM (remplies par cacheDom). */
@@ -91,6 +93,7 @@
     dom.countField = byId('count-field');
     dom.homeRecord = byId('home-record');
     dom.btnOpenHistory = byId('btn-open-history');
+    dom.helps = Array.prototype.slice.call(document.querySelectorAll('[data-help]'));
 
     // Historique
     dom.historyTitle = byId('history-title');
@@ -154,6 +157,7 @@
     dom.configForm.addEventListener('change', onConfigChange);
     dom.configForm.addEventListener('submit', onConfigSubmit);
     dom.btnOpenHistory.addEventListener('click', openHistory);
+    bindHelps();
 
     dom.btnClearHistory.addEventListener('click', requestClearHistory);
     dom.btnHistoryBack.addEventListener('click', goHome);
@@ -181,6 +185,7 @@
       dom.screens[screen].hidden = screen !== name;
     });
     state.screen = name;
+    if (name !== 'home') closeHelps();
     if (options && options.initial) return;
     window.scrollTo(0, 0);
     focusScreen(name);
@@ -204,6 +209,10 @@
   }
 
   function onGlobalKeydown(event) {
+    if (event.key === 'Escape' && state.screen === 'home' && isHelpOpen()) {
+      closeHelps();
+      return;
+    }
     if (event.key !== 'Escape' || dom.dialog.open || state.screen !== 'game') return;
     event.preventDefault();
     requestAbandon();
@@ -302,6 +311,67 @@
     dom.homeRecord.textContent = isValidResult(record)
       ? 'Record pour cette configuration : ' + formatRecordScore(record)
       : 'Pas encore de record pour cette configuration.';
+  }
+
+  /* =======================================================
+     Accueil : aides dépliables (points d'interrogation)
+     - survol à la souris : ouverte tant que le pointeur est dessus ;
+     - clic, toucher, Entrée ou Espace : ouvre / referme ;
+     - Échap, clic ailleurs ou Tab vers un autre élément : referme.
+     ======================================================= */
+
+  function bindHelps() {
+    dom.helps.forEach(function (help) {
+      help.addEventListener('pointerenter', function (event) {
+        if (event.pointerType === 'mouse') setHelpState(help, state.helpPinned);
+      });
+      help.addEventListener('pointerleave', function (event) {
+        if (event.pointerType === 'mouse' && state.helpHovered === help) setHelpState(null, state.helpPinned);
+      });
+      help.addEventListener('focusout', function (event) {
+        // relatedTarget vide = clic ailleurs, déjà géré par onDocumentClick
+        const leftHelp = event.relatedTarget && !help.contains(event.relatedTarget);
+        if (leftHelp && state.helpPinned === help) setHelpState(state.helpHovered, null);
+      });
+      help.querySelector('.help-toggle').addEventListener('click', function () {
+        toggleHelp(help);
+      });
+    });
+    document.addEventListener('click', onDocumentClick);
+  }
+
+  /** Le bouton referme l'aide si elle est visible, sinon l'ouvre. */
+  function toggleHelp(help) {
+    if (isHelpVisible(help)) setHelpState(null, null);
+    else setHelpState(state.helpHovered, help);
+  }
+
+  function onDocumentClick(event) {
+    if (state.helpPinned && !state.helpPinned.contains(event.target)) {
+      setHelpState(state.helpHovered, null);
+    }
+  }
+
+  function isHelpVisible(help) {
+    return help === state.helpHovered || help === state.helpPinned;
+  }
+
+  function isHelpOpen() {
+    return state.helpHovered !== null || state.helpPinned !== null;
+  }
+
+  function closeHelps() {
+    setHelpState(null, null);
+  }
+
+  function setHelpState(hovered, pinned) {
+    state.helpHovered = hovered;
+    state.helpPinned = pinned;
+    dom.helps.forEach(function (help) {
+      const open = isHelpVisible(help);
+      help.classList.toggle('is-open', open);
+      help.querySelector('.help-toggle').setAttribute('aria-expanded', String(open));
+    });
   }
 
   /* =======================================================

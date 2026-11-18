@@ -11,6 +11,7 @@ Pour vérifier le générateur de questions, ouvrez `tests.html` de la même fa�
 ## Fonctionnalités
 
 - **Configuration** : opérations (+ − × ÷, mode mixte si plusieurs sont cochées), difficulté (Facile / Moyen / Difficile), temps par question (3 s à 30 s, ou illimité), type de partie (série de 10 / 20 / 50 questions, ou survie à 3 erreurs). La dernière configuration utilisée est mémorisée.
+- **Aide intégrée** : sous chaque réglage, un petit « ? » se déplie au survol de la souris et explique concrètement chaque option, avec des exemples. Sur écran tactile, on le touche pour l'ouvrir ou le fermer. Au clavier, Entrée l'ouvre et Échap le referme.
 - **Jeu** : calcul en grand, saisie au clavier validée avec Entrée, barre de temps fluide (`requestAnimationFrame`) qui passe à l'orange sous 30 % et au rouge sous 15 %, feedback juste / faux annoncé aussi aux lecteurs d'écran, score, série en cours, vies en survie. Échap ou « Abandonner » ouvre une confirmation et met la partie en pause.
 - **Résultats** : score, pourcentage, temps de réponse moyen, meilleure série, « Nouveau record ! », liste des questions ratées, Rejouer.
 - **Historique & records** : records par configuration et 20 dernières parties, avec un bouton pour tout effacer.

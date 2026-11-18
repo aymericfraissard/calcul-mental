@@ -56,7 +56,42 @@
               <span class="chip-face chip-face--stacked"><span class="chip-symbol" aria-hidden="true">÷</span>Division</span>
             </label>
           </div>
-          <p class="hint" id="ops-hint" aria-live="polite"></p>
+          <div class="field-help">
+            <!-- Aide dépliable : s'ouvre au survol, au clic, au toucher ou avec Entrée -->
+            <div class="help" data-help>
+              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-operations">
+                <span class="help-icon" aria-hidden="true">?</span>
+                <span class="help-title">Comprendre les opérations</span>
+              </button>
+              <div class="help-panel" id="help-operations">
+                <div class="help-panel-inner">
+                  <dl class="help-list">
+                    <div class="help-item">
+                      <dt>+ Addition</dt>
+                      <dd>Additionner deux nombres, par exemple <span class="math">12 + 7 = 19</span>.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>− Soustraction</dt>
+                      <dd>Retirer le second nombre du premier, par exemple <span class="math">15 − 6 = 9</span>. En Facile et Moyen, le résultat n'est jamais négatif. En Difficile il peut l'être : un bouton ± permet alors de saisir le signe moins.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>× Multiplication</dt>
+                      <dd>Les tables de multiplication, par exemple <span class="math">7 × 8 = 56</span>. Les tables proposées dépendent de la difficulté.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>÷ Division</dt>
+                      <dd>Une division qui tombe toujours juste, sans reste et jamais par 0, par exemple <span class="math">42 ÷ 6 = 7</span>.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Plusieurs cases cochées</dt>
+                      <dd>Mode mixte : chaque question tire au hasard une des opérations cochées.</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <p class="hint" id="ops-hint" aria-live="polite"></p>
+          </div>
         </fieldset>
 
         <fieldset class="field">
@@ -74,6 +109,32 @@
               <input type="radio" name="difficulty" value="difficile" class="visually-hidden">
               <span class="chip-face">Difficile</span>
             </label>
+          </div>
+          <div class="field-help">
+            <div class="help" data-help>
+              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-difficulty">
+                <span class="help-icon" aria-hidden="true">?</span>
+                <span class="help-title">Comprendre la difficulté</span>
+              </button>
+              <div class="help-panel" id="help-difficulty">
+                <div class="help-panel-inner">
+                  <dl class="help-list">
+                    <div class="help-item">
+                      <dt>Facile</dt>
+                      <dd>Additions et soustractions avec des nombres de 1 à 20, tables de 1 à 5, divisions dont le diviseur et le résultat vont de 1 à 5. Exemples : <span class="math">14 + 6</span>, <span class="math">4 × 7</span>, <span class="math">15 ÷ 3</span>.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Moyen</dt>
+                      <dd>Nombres de 10 à 100, tables de 2 à 10, divisions par 2 à 10 avec un résultat jusqu'à 10. Exemples : <span class="math">47 + 38</span>, <span class="math">8 × 9</span>, <span class="math">72 ÷ 8</span>.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Difficile</dt>
+                      <dd>Nombres de 50 à 999, multiplications jusqu'à <span class="math">20 × 20</span>, divisions par 2 à 15 avec un résultat jusqu'à 20. La soustraction peut donner un résultat négatif. Exemples : <span class="math">684 − 791</span>, <span class="math">17 × 13</span>, <span class="math">156 ÷ 12</span>.</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
           </div>
         </fieldset>
 
@@ -105,6 +166,45 @@
               <span class="chip-face">Illimité</span>
             </label>
           </div>
+          <div class="field-help">
+            <div class="help" data-help>
+              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-time">
+                <span class="help-icon" aria-hidden="true">?</span>
+                <span class="help-title">Comprendre le temps par question</span>
+              </button>
+              <div class="help-panel" id="help-time">
+                <div class="help-panel-inner">
+                  <dl class="help-list">
+                    <div class="help-item">
+                      <dt>3 s</dt>
+                      <dd>Réflexe pur : à réserver aux calculs connus par cœur, comme les tables.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>5 s</dt>
+                      <dd>Rapide : juste le temps d'un calcul simple.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>10 s</dt>
+                      <dd>Rythme standard, adapté au niveau Moyen.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>15 s</dt>
+                      <dd>Confortable : laisse le temps de calculer en plusieurs étapes.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>30 s</dt>
+                      <dd>Large : pour le niveau Difficile, ou pour apprendre sans pression.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Illimité</dt>
+                      <dd>Aucun chronomètre, seule la justesse compte. Le temps de réponse moyen est quand même mesuré.</dd>
+                    </div>
+                  </dl>
+                  <p class="help-note">Avec un chronomètre, une barre se vide pendant la question (orange sous 30 %, rouge sous 15 %). Si elle arrive au bout, la question compte comme une erreur et la bonne réponse s'affiche.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </fieldset>
 
         <fieldset class="field">
@@ -119,7 +219,30 @@
               <span class="chip-face">Survie</span>
             </label>
           </div>
-          <p class="hint" id="mode-hint"></p>
+          <div class="field-help">
+            <div class="help" data-help>
+              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-mode">
+                <span class="help-icon" aria-hidden="true">?</span>
+                <span class="help-title">Comprendre le type de partie</span>
+              </button>
+              <div class="help-panel" id="help-mode">
+                <div class="help-panel-inner">
+                  <dl class="help-list">
+                    <div class="help-item">
+                      <dt>Série</dt>
+                      <dd>Un nombre fixe de questions, choisi juste en dessous. À la fin : score, pourcentage, temps moyen et liste des erreurs.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Survie</dt>
+                      <dd>Les questions s'enchaînent sans limite. Chaque réponse fausse ou temps écoulé coûte une des 3 vies, et la partie s'arrête à la 3e erreur. Le score est le nombre de bonnes réponses.</dd>
+                    </div>
+                  </dl>
+                  <p class="help-note">Chaque combinaison de réglages a son propre record.</p>
+                </div>
+              </div>
+            </div>
+            <p class="hint" id="mode-hint"></p>
+          </div>
         </fieldset>
 
         <fieldset class="field" id="count-field">
@@ -137,6 +260,33 @@
               <input type="radio" name="count" value="50" class="visually-hidden">
               <span class="chip-face">50</span>
             </label>
+          </div>
+          <div class="field-help">
+            <div class="help" data-help>
+              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-count">
+                <span class="help-icon" aria-hidden="true">?</span>
+                <span class="help-title">Comprendre le nombre de questions</span>
+              </button>
+              <div class="help-panel" id="help-count">
+                <div class="help-panel-inner">
+                  <dl class="help-list">
+                    <div class="help-item">
+                      <dt>10</dt>
+                      <dd>Partie courte, idéale pour s'échauffer.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>20</dt>
+                      <dd>Partie standard.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>50</dt>
+                      <dd>Partie longue, pour travailler l'endurance et la régularité.</dd>
+                    </div>
+                  </dl>
+                  <p class="help-note">10, 20 et 50 questions ont chacun leur propre record.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </fieldset>
 

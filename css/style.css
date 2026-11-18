@@ -465,6 +465,167 @@ kbd {
   color: var(--text-secondary);
 }
 
+/* ---------- 10 bis. Aide dépliable (point d'interrogation) ----------
+   Fermée : un rond « ? » de 30 px. Ouverte : la bulle s'élargit sur
+   toute la largeur du réglage, puis le panneau se déroule. Elle passe
+   par-dessus le contenu (position absolue) : rien ne bouge en dessous. */
+.field-help {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  margin-top: 0.75rem;
+  padding-left: 42px; /* place réservée au « ? » */
+}
+
+.field-help .hint {
+  margin-top: 0;
+}
+
+.help {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  width: 30px;
+  overflow: hidden;
+  border: 2px solid var(--gray-200);
+  border-radius: 15px;
+  background: var(--bg-container);
+  /* Fermeture : le panneau se replie d'abord, puis la bulle redevient un rond */
+  transition: width 0.25s ease 0.2s, border-radius 0.25s ease 0.2s,
+    border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.help.is-open {
+  z-index: 6;
+  width: 100%;
+  border-color: var(--primary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  /* Ouverture : la bulle s'élargit d'abord, puis le panneau se déroule */
+  transition: width 0.25s ease, border-radius 0.25s ease,
+    border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.help-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: padding 0.25s ease 0.2s;
+}
+
+/* Une fois ouverte, le « ? » se décolle du bord en même temps que la bulle s'élargit */
+.help.is-open .help-toggle {
+  padding: 0.375rem 0.5rem;
+  transition: padding 0.25s ease;
+}
+
+.help-toggle:focus {
+  outline: none;
+}
+
+/* Anneau de focus clavier dessiné à l'intérieur (la bulle coupe ce qui dépasse) */
+.help-toggle:focus-visible .help-icon {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.help-icon {
+  display: flex;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.help:hover .help-icon,
+.help.is-open .help-icon {
+  background: var(--primary);
+  color: var(--text-inverse);
+}
+
+.help-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.help.is-open .help-title {
+  color: var(--text-primary);
+  opacity: 1;
+  transition: opacity 0.2s ease 0.1s;
+}
+
+/* Hauteur animée de 0 à « auto » grâce à grid-template-rows */
+.help-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.25s ease, visibility 0s linear 0.25s;
+}
+
+.help.is-open .help-panel {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.3s ease 0.2s, visibility 0s linear 0s;
+}
+
+.help-panel-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.help-list {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0.375rem 1rem 1rem 2.75rem; /* aligné sous le titre */
+}
+
+.help-item dt {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.help-item dd {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* Un exemple de calcul ne se coupe jamais en fin de ligne */
+.help .math {
+  white-space: nowrap;
+}
+
+.help-note {
+  margin: -0.25rem 1rem 1rem 2.75rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--gray-200);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
 /* ---------- 11. Écran de jeu ---------- */
 .game-topbar {
   display: flex;
@@ -937,6 +1098,14 @@ kbd {
     margin-bottom: 1.5rem;
   }
 
+  .help-list {
+    padding: 0.5rem 0.875rem 0.875rem;
+  }
+
+  .help-note {
+    margin: -0.125rem 0.875rem 0.875rem;
+  }
+
   /* Jeu */
   .stats {
     flex: 1 1 100%;
@@ -1030,6 +1199,7 @@ kbd {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 
   .btn-primary:hover:not(:disabled) {
