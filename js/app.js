@@ -1,11 +1,15 @@
 /* =========================================================
    app.js — Contrôleur de l'application
    ---------------------------------------------------------
-   Gère les quatre écrans (accueil, historique, jeu,
-   résultats), le déroulement d'une partie et l'affichage.
+   Gère les quatre écrans (accueil, profil, jeu, résultats),
+   le déroulement d'une partie et l'affichage.
+   Il n'y a pas de temps imparti : un chronomètre discret
+   mesure chaque réponse, convertie en note de rapidité.
    Tout l'état modifiable est regroupé dans l'objet `state`.
    Dépend de : Store (storage.js), Theme (theme.js),
-               Generator (generator.js), Timer (timer.js).
+               Generator (generator.js), Stats (stats.js),
+               Timer (timer.js), Ui (ui.js), Charts (charts.js),
+               Profile (profile.js).
    ========================================================= */
 
 (function () {
@@ -17,26 +21,18 @@
 
   const OPERATION_ORDER = ['add', 'sub', 'mul', 'div'];
   const DIFFICULTIES = ['facile', 'moyen', 'difficile'];
-  const DIFFICULTY_LABELS = { facile: 'Facile', moyen: 'Moyen', difficile: 'Difficile' };
-  const TIMES = [3, 5, 10, 15, 30, 0]; // en secondes, 0 = illimité
   const MODES = ['serie', 'survie'];
   const COUNTS = [10, 20, 50];
   const LIVES = 3;
-  const FEEDBACK_MS = { correct: 600, wrong: 1200 };
+  const FEEDBACK_MS = { correct: 900, wrong: 1400 };
   const MAX_ANSWER_DIGITS = 6;
-  const SCREENS = ['home', 'history', 'game', 'results'];
+  const SCREENS = ['home', 'profile', 'game', 'results'];
 
   const DEFAULT_CONFIG = Object.freeze({
     operations: ['add'],
     difficulty: 'facile',
-    time: 10,
     mode: 'serie',
     count: 10
-  });
-
-  const DECIMAL_FORMAT = new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
   });
 
   /* =======================================================
@@ -66,6 +62,7 @@
   function init() {
     cacheDom();
     bindEvents();
+    Profile.init({ confirm: openDialog, onPlay: goHome });
     state.config = sanitizeConfig(Store.loadConfig());
     applyConfigToForm(state.config);
     updateOpsHint();
@@ -81,6 +78,8 @@
     SCREENS.forEach(function (name) { dom.screens[name] = byId('screen-' + name); });
 
     // En-tête
+    dom.siteNav = byId('site-nav');
+    dom.navLinks = Array.prototype.slice.call(dom.siteNav.querySelectorAll('[data-nav]'));
     dom.themeToggle = byId('theme-toggle');
     dom.themeText = byId('theme-toggle-text');
     dom.iconMoon = byId('icon-moon');
@@ -92,18 +91,7 @@
     dom.modeHint = byId('mode-hint');
     dom.countField = byId('count-field');
     dom.homeRecord = byId('home-record');
-    dom.btnOpenHistory = byId('btn-open-history');
     dom.helps = Array.prototype.slice.call(document.querySelectorAll('[data-help]'));
-
-    // Historique
-    dom.historyTitle = byId('history-title');
-    dom.recordsList = byId('records-list');
-    dom.recordsEmpty = byId('records-empty');
-    dom.historyList = byId('history-list');
-    dom.historyEmpty = byId('history-empty');
-    dom.storageWarning = byId('storage-warning');
-    dom.btnClearHistory = byId('btn-clear-history');
-    dom.btnHistoryBack = byId('btn-history-back');
 
     // Jeu
     dom.statProgress = byId('stat-progress');
@@ -114,9 +102,6 @@
     dom.statStreak = byId('stat-streak');
     dom.btnAbandon = byId('btn-abandon');
     dom.gameCard = byId('game-card');
-    dom.timer = byId('timer');
-    dom.timerFill = byId('timer-fill');
-    dom.timerCount = byId('timer-count');
     dom.question = byId('question');
     dom.qA = byId('q-a');
     dom.qOp = byId('q-op');
@@ -135,7 +120,11 @@
     dom.resConfig = byId('res-config');
     dom.resPct = byId('res-pct');
     dom.resAvg = byId('res-avg');
+    dom.resNote = byId('res-note');
     dom.resStreak = byId('res-streak');
+    dom.resTiers = byId('res-tiers');
+    dom.resTiersNote = byId('res-tiers-note');
+    dom.resTiersEmpty = byId('res-tiers-empty');
     dom.missedEmpty = byId('missed-empty');
     dom.missedTable = byId('missed-table');
     dom.missedBody = byId('missed-body');
@@ -151,16 +140,18 @@
   }
 
   function bindEvents() {
+    dom.navLinks.forEach(function (link) {
+      link.addEventListener('click', function () {
+        if (link.getAttribute('data-nav') === 'profile') openProfile();
+        else goHome();
+      });
+    });
     dom.themeToggle.addEventListener('click', Theme.toggle);
     Theme.setListener(updateThemeButton);
 
     dom.configForm.addEventListener('change', onConfigChange);
     dom.configForm.addEventListener('submit', onConfigSubmit);
-    dom.btnOpenHistory.addEventListener('click', openHistory);
     bindHelps();
-
-    dom.btnClearHistory.addEventListener('click', requestClearHistory);
-    dom.btnHistoryBack.addEventListener('click', goHome);
 
     dom.answerForm.addEventListener('submit', onAnswerSubmit);
     dom.answerInput.addEventListener('input', onAnswerInput);
@@ -185,10 +176,22 @@
       dom.screens[screen].hidden = screen !== name;
     });
     state.screen = name;
+    updateNav(name);
     if (name !== 'home') closeHelps();
     if (options && options.initial) return;
     window.scrollTo(0, 0);
     focusScreen(name);
+  }
+
+  /** Onglets « Jouer » / « Profil » : masqués pendant une partie. */
+  function updateNav(name) {
+    dom.siteNav.hidden = name === 'game';
+    dom.navLinks.forEach(function (link) {
+      const isProfileLink = link.getAttribute('data-nav') === 'profile';
+      const current = isProfileLink === (name === 'profile');
+      if (current) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
   }
 
   /** Place le focus au bon endroit pour le clavier et les lecteurs d'écran. */
@@ -206,6 +209,13 @@
     state.game = null;
     refreshHomeDetails();
     showScreen('home');
+  }
+
+  function openProfile() {
+    clearGameTimers();
+    state.game = null;
+    showScreen('profile');
+    Profile.render();
   }
 
   function onGlobalKeydown(event) {
@@ -231,7 +241,6 @@
     return {
       operations: operations.length > 0 ? operations : DEFAULT_CONFIG.operations.slice(),
       difficulty: DIFFICULTIES.indexOf(source.difficulty) !== -1 ? source.difficulty : DEFAULT_CONFIG.difficulty,
-      time: TIMES.indexOf(source.time) !== -1 ? source.time : DEFAULT_CONFIG.time,
       mode: MODES.indexOf(source.mode) !== -1 ? source.mode : DEFAULT_CONFIG.mode,
       count: COUNTS.indexOf(source.count) !== -1 ? source.count : DEFAULT_CONFIG.count
     };
@@ -246,7 +255,6 @@
     return sanitizeConfig({
       operations: Array.prototype.map.call(checkedOperationInputs(), function (input) { return input.value; }),
       difficulty: fields.difficulty.value,
-      time: Number(fields.time.value),
       mode: fields.mode.value,
       count: Number(fields.count.value)
     });
@@ -258,7 +266,6 @@
       input.checked = config.operations.indexOf(input.value) !== -1;
     });
     fields.difficulty.value = config.difficulty;
-    fields.time.value = String(config.time);
     fields.mode.value = config.mode;
     fields.count.value = String(config.count);
   }
@@ -303,13 +310,13 @@
     dom.countField.hidden = !isSerie;
     dom.modeHint.textContent = isSerie
       ? 'Un nombre fixe de questions.'
-      : 'La partie continue jusqu\'à ' + LIVES + ' erreurs (réponse fausse ou temps écoulé).';
+      : 'La partie continue jusqu\'à ' + LIVES + ' réponses fausses.';
   }
 
   function updateHomeRecord(config) {
-    const record = Store.getRecord(Store.configKey(config));
-    dom.homeRecord.textContent = isValidResult(record)
-      ? 'Record pour cette configuration : ' + formatRecordScore(record)
+    const record = Stats.bestGame(Store.getGames(), Stats.configKey(config));
+    dom.homeRecord.textContent = record
+      ? 'Record pour cette configuration : ' + Ui.formatRecordScore(record)
       : 'Pas encore de record pour cette configuration.';
   }
 
@@ -407,7 +414,6 @@
 
   function prepareGameScreen(game) {
     dom.statLivesBox.hidden = game.config.mode !== 'survie';
-    dom.timer.hidden = game.config.time === 0;
     dom.btnSign.hidden = !game.allowNegative;
     resetAnswerField();
   }
@@ -421,34 +427,16 @@
     renderQuestion(game.question, game.questionNumber);
     renderStats(game);
     resetAnswerField();
-    startQuestionTimer(game.config.time);
-  }
-
-  function startQuestionTimer(seconds) {
-    const gameId = state.gameId;
-    const durationMs = seconds * 1000;
-    if (durationMs > 0) renderTimer(durationMs, 1);
-    Timer.start(durationMs, renderTimer, function () {
-      if (gameId === state.gameId) onTimeExpired();
-    });
-  }
-
-  /** Appelée à chaque frame par le Timer : barre fluide + compteur. */
-  function renderTimer(remainingMs, ratio) {
-    dom.timerFill.style.transform = 'scaleX(' + ratio.toFixed(4) + ')';
-    dom.timerFill.classList.toggle('is-warning', ratio < 0.30 && ratio >= 0.15);
-    dom.timerFill.classList.toggle('is-danger', ratio < 0.15);
-    const label = formatCountdown(remainingMs);
-    if (dom.timerCount.textContent !== label) dom.timerCount.textContent = label;
+    Timer.start(); // chronomètre discret : rien n'est affiché pendant la question
   }
 
   function renderQuestion(question, number) {
-    dom.qA.textContent = formatNumber(question.a);
+    dom.qA.textContent = Ui.formatNumber(question.a);
     dom.qOp.textContent = question.symbol;
-    dom.qB.textContent = formatNumber(question.b);
+    dom.qB.textContent = Ui.formatNumber(question.b);
     dom.qAnswer.textContent = '?';
     // Taille calculée sur le calcul complet (réponse comprise) : pas de saut à l'affichage de la réponse
-    const fullText = formatOperation(question) + ' = ' + formatNumber(question.answer);
+    const fullText = Ui.formatOperation(question) + ' = ' + Ui.formatNumber(question.answer);
     dom.question.style.setProperty('--chars', String(fullText.length));
     const spoken = Generator.OPERATIONS[question.op].spoken;
     dom.questionSpoken.textContent =
@@ -469,7 +457,7 @@
       dot.classList.toggle('is-lost', index >= lives);
     });
     dom.lives.setAttribute('aria-label',
-      pluralize(lives, 'vie restante', 'vies restantes') + ' sur ' + LIVES);
+      Ui.pluralize(lives, 'vie restante', 'vies restantes') + ' sur ' + LIVES);
   }
 
   /* =======================================================
@@ -485,11 +473,7 @@
       dom.answerInput.focus(); // champ vide : on attend une vraie réponse
       return;
     }
-    resolveQuestion(value, false);
-  }
-
-  function onTimeExpired() {
-    if (state.game && state.game.phase === 'question') resolveQuestion(null, true);
+    resolveQuestion(value);
   }
 
   /** Filtre la saisie : chiffres uniquement, signe moins si possible. */
@@ -524,26 +508,25 @@
     dom.answerInput.focus();
   }
 
-  /**
-   * Termine la question courante (réponse donnée ou temps écoulé),
-   * met à jour le score puis programme la suite.
-   */
-  function resolveQuestion(given, timedOut) {
+  /** Termine la question courante : arrête le chronomètre, note, puis programme la suite. */
+  function resolveQuestion(given) {
     const game = state.game;
     Timer.stop();
+    const ms = Timer.elapsed();
+    const isCorrect = given === game.question.answer;
     const entry = {
       question: game.question,
       given: given,
-      timedOut: timedOut,
-      isCorrect: !timedOut && given === game.question.answer,
-      ms: Timer.elapsed()
+      isCorrect: isCorrect,
+      ms: ms,
+      tier: isCorrect ? Stats.tierFor(ms) : null
     };
     game.entries.push(entry);
     game.phase = 'feedback';
-    updateScore(game, entry.isCorrect);
+    updateScore(game, isCorrect);
     renderStats(game);
     showFeedback(entry);
-    scheduleAdvance(entry.isCorrect ? FEEDBACK_MS.correct : FEEDBACK_MS.wrong);
+    scheduleAdvance(isCorrect ? FEEDBACK_MS.correct : FEEDBACK_MS.wrong);
   }
 
   function updateScore(game, isCorrect) {
@@ -560,14 +543,14 @@
   function showFeedback(entry) {
     state.frozenAnswer = dom.answerInput.value;
     setFeedbackStatus(entry.isCorrect ? 'correct' : 'wrong');
-    dom.qAnswer.textContent = formatNumber(entry.question.answer);
+    dom.qAnswer.textContent = Ui.formatNumber(entry.question.answer);
     dom.feedback.textContent = feedbackMessage(entry);
   }
 
+  /** « Juste ! 2,4 s · Réflexe » ou « Faux. La bonne réponse était 56. » */
   function feedbackMessage(entry) {
-    if (entry.isCorrect) return 'Juste !';
-    const prefix = entry.timedOut ? 'Temps écoulé.' : 'Faux.';
-    return prefix + ' La bonne réponse était ' + formatNumber(entry.question.answer) + '.';
+    if (entry.isCorrect) return 'Juste ! ' + Ui.formatSeconds(entry.ms) + ' · ' + entry.tier.label;
+    return 'Faux. La bonne réponse était ' + Ui.formatNumber(entry.question.answer) + '.';
   }
 
   /** Applique l'état visuel juste / faux (ou le retire avec null). */
@@ -629,42 +612,29 @@
     const game = state.game;
     clearGameTimers();
     game.phase = 'over';
-    const summary = summarizeGame(game);
-    summary.isRecord = saveGameResult(game.config, summary);
-    renderResults(summary);
+    const record = Stats.buildGameRecord(game.config, game.entries, game.bestStreak, new Date().toISOString());
+    // Record comparé aux parties déjà enregistrées, avant d'ajouter celle-ci
+    const previousBest = Stats.bestGame(Store.getGames(), Stats.configKey(game.config));
+    const isRecord = Stats.isBetter(record, previousBest);
+    Store.addGame(record);
+    renderResults(summarizeGame(game, record, isRecord));
     showScreen('results');
   }
 
-  function summarizeGame(game) {
-    const total = game.entries.length;
-    // Temps moyen calculé sur les questions répondues (les temps écoulés sont exclus)
-    const answered = game.entries.filter(function (entry) { return !entry.timedOut; });
-    const totalMs = answered.reduce(function (sum, entry) { return sum + entry.ms; }, 0);
+  function summarizeGame(game, record, isRecord) {
+    const totals = Stats.totalsOf(record);
     return {
       config: game.config,
-      correct: game.correct,
-      total: total,
-      percent: total > 0 ? Math.round((game.correct / total) * 100) : 0,
-      avgMs: answered.length > 0 ? Math.round(totalMs / answered.length) : null,
+      isRecord: isRecord,
+      correct: record.correct,
+      total: record.total,
+      percent: record.total > 0 ? Math.round((record.correct / record.total) * 100) : 0,
+      avgMs: Stats.averageMs(record),
+      note: Stats.speedNote(totals.pts, totals.c),
+      tiers: totals.tiers,
       bestStreak: game.bestStreak,
       missed: game.entries.filter(function (entry) { return !entry.isCorrect; })
     };
-  }
-
-  /** Enregistre la partie dans l'historique et renvoie true si c'est un record. */
-  function saveGameResult(config, summary) {
-    const key = Store.configKey(config);
-    const result = {
-      date: new Date().toISOString(),
-      key: key,
-      label: formatConfigLabel(config),
-      mode: config.mode,
-      correct: summary.correct,
-      total: summary.total,
-      avgMs: summary.avgMs
-    };
-    Store.addHistory(result);
-    return Store.saveRecord(key, result);
   }
 
   function replay() {
@@ -692,7 +662,7 @@
     });
   }
 
-  /** Met la partie en pause pendant la confirmation (timer et enchaînement). */
+  /** Met la partie en pause pendant la confirmation (chronomètre et enchaînement). */
   function pauseGame() {
     Timer.pause();
     if (state.advanceTimeout !== null) {
@@ -727,15 +697,25 @@
     dom.recordBadge.hidden = !summary.isRecord;
     dom.resScore.textContent = String(summary.correct);
     dom.resTotal.textContent = String(summary.total);
-    dom.resConfig.textContent = formatConfigLabel(summary.config);
+    dom.resConfig.textContent = Ui.formatConfigLabel(summary.config);
     dom.resPct.textContent = summary.percent + ' %';
-    dom.resAvg.textContent = summary.avgMs === null ? '—' : formatDuration(summary.avgMs);
+    dom.resAvg.textContent = summary.avgMs === null ? '—' : Ui.formatSeconds(summary.avgMs);
+    dom.resNote.textContent = summary.note === null ? '—' : Ui.formatNote(summary.note) + ' / 20';
     dom.resStreak.textContent = String(summary.bestStreak);
+    renderResultTiers(summary);
     renderMissed(summary.missed);
   }
 
+  function renderResultTiers(summary) {
+    const hasCorrect = summary.correct > 0;
+    dom.resTiers.hidden = !hasCorrect;
+    dom.resTiersNote.hidden = !hasCorrect;
+    dom.resTiersEmpty.hidden = hasCorrect;
+    if (hasCorrect) Charts.renderTierBars(dom.resTiers, summary.tiers);
+  }
+
   function renderMissed(missed) {
-    replaceChildren(dom.missedBody, missed.map(createMissedRow));
+    Ui.replaceChildren(dom.missedBody, missed.map(createMissedRow));
     dom.missedTable.hidden = missed.length === 0;
     dom.missedEmpty.hidden = missed.length > 0;
   }
@@ -743,81 +723,10 @@
   function createMissedRow(entry) {
     const question = entry.question;
     const row = document.createElement('tr');
-    row.appendChild(createElement('td', '', formatOperation(question)));
-    row.appendChild(createElement('td', 'is-wrong', entry.timedOut ? 'Temps écoulé' : formatNumber(entry.given)));
-    row.appendChild(createElement('td', 'is-right', formatNumber(question.answer)));
+    row.appendChild(Ui.createElement('td', '', Ui.formatOperation(question)));
+    row.appendChild(Ui.createElement('td', 'is-wrong', Ui.formatNumber(entry.given)));
+    row.appendChild(Ui.createElement('td', 'is-right', Ui.formatNumber(question.answer)));
     return row;
-  }
-
-  /* =======================================================
-     Historique & records
-     ======================================================= */
-
-  function openHistory() {
-    renderHistory();
-    showScreen('history');
-  }
-
-  function renderHistory() {
-    const history = Store.getHistory().filter(isValidResult);
-    const records = objectValues(Store.getRecords()).filter(isValidResult).sort(byDateDesc);
-    renderList(dom.historyList, dom.historyEmpty, history, createHistoryItem);
-    renderList(dom.recordsList, dom.recordsEmpty, records, createRecordItem);
-    dom.btnClearHistory.disabled = history.length === 0 && records.length === 0;
-    dom.storageWarning.hidden = Store.isPersistent();
-  }
-
-  function renderList(listElement, emptyElement, items, createItem) {
-    replaceChildren(listElement, items.map(createItem));
-    listElement.hidden = items.length === 0;
-    emptyElement.hidden = items.length > 0;
-  }
-
-  function createHistoryItem(entry) {
-    return createListItem(entry.label, formatDate(entry.date), entry.correct + ' / ' + entry.total);
-  }
-
-  function createRecordItem(record) {
-    let meta = 'Le ' + formatDate(record.date);
-    if (typeof record.avgMs === 'number') meta += ' · ' + formatDuration(record.avgMs) + ' en moyenne';
-    return createListItem(record.label, meta, formatRecordScore(record));
-  }
-
-  function createListItem(title, meta, score) {
-    const item = createElement('li', 'list-item', '');
-    const main = createElement('div', 'list-main', '');
-    main.appendChild(createElement('p', 'list-title', title));
-    main.appendChild(createElement('p', 'list-meta', meta));
-    item.appendChild(main);
-    item.appendChild(createElement('p', 'list-score', score));
-    return item;
-  }
-
-  function requestClearHistory() {
-    openDialog({
-      title: 'Effacer l\'historique ?',
-      message: 'Toutes les parties enregistrées et tous les records seront supprimés. Cette action est irréversible.',
-      confirmLabel: 'Effacer',
-      cancelLabel: 'Annuler',
-      danger: true,
-      focus: 'cancel'
-    }, function (confirmed) {
-      if (!confirmed) return;
-      Store.clearHistory();
-      renderHistory();
-      dom.historyTitle.focus();
-    });
-  }
-
-  /** Ignore les entrées mal formées (stockage modifié à la main, ancienne version…). */
-  function isValidResult(entry) {
-    return Boolean(entry) && typeof entry === 'object' &&
-      typeof entry.label === 'string' && typeof entry.date === 'string' &&
-      typeof entry.correct === 'number' && typeof entry.total === 'number';
-  }
-
-  function byDateDesc(a, b) {
-    return b.date.localeCompare(a.date);
   }
 
   /* =======================================================
@@ -853,77 +762,6 @@
     dom.themeToggle.title = isDark ? 'Passer au thème clair' : 'Passer au thème sombre';
     dom.iconMoon.hidden = isDark;
     dom.iconSun.hidden = !isDark;
-  }
-
-  /* =======================================================
-     Formatage
-     ======================================================= */
-
-  /** Affiche les nombres négatifs avec le vrai signe moins (−). */
-  function formatNumber(value) {
-    return value < 0 ? '−' + Math.abs(value) : String(value);
-  }
-
-  function formatOperation(question) {
-    return formatNumber(question.a) + ' ' + question.symbol + ' ' + formatNumber(question.b);
-  }
-
-  /** Compte à rebours arrondi au dixième supérieur : « 4,2 s ». */
-  function formatCountdown(ms) {
-    return DECIMAL_FORMAT.format(Math.ceil(ms / 100) / 10) + ' s';
-  }
-
-  function formatDuration(ms) {
-    return DECIMAL_FORMAT.format(ms / 1000) + ' s';
-  }
-
-  function formatDate(iso) {
-    const date = new Date(iso);
-    if (isNaN(date.getTime())) return '—';
-    const day = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    return day + ' à ' + time;
-  }
-
-  /** Exemple : « Mixte + × · Moyen · 10 s · Série de 20 ». */
-  function formatConfigLabel(config) {
-    const operations = config.operations.length === 1
-      ? Generator.OPERATIONS[config.operations[0]].label
-      : 'Mixte ' + config.operations.map(function (op) { return Generator.OPERATIONS[op].symbol; }).join(' ');
-    const time = config.time === 0 ? 'Temps illimité' : config.time + ' s';
-    const mode = config.mode === 'serie' ? 'Série de ' + config.count : 'Survie';
-    return [operations, DIFFICULTY_LABELS[config.difficulty], time, mode].join(' · ');
-  }
-
-  function formatRecordScore(record) {
-    return record.mode === 'survie'
-      ? pluralize(record.correct, 'bonne réponse', 'bonnes réponses')
-      : record.correct + ' / ' + record.total;
-  }
-
-  /** Accord en français : 0 et 1 au singulier. */
-  function pluralize(count, singular, plural) {
-    return count + ' ' + (Math.abs(count) > 1 ? plural : singular);
-  }
-
-  /* =======================================================
-     Petits outils DOM
-     ======================================================= */
-
-  function createElement(tag, className, text) {
-    const element = document.createElement(tag);
-    if (className) element.className = className;
-    if (text) element.textContent = text;
-    return element;
-  }
-
-  function replaceChildren(parent, children) {
-    while (parent.firstChild) parent.removeChild(parent.firstChild);
-    children.forEach(function (child) { parent.appendChild(child); });
-  }
-
-  function objectValues(object) {
-    return Object.keys(object).map(function (key) { return object[key]; });
   }
 
   init();

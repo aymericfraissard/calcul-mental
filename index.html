@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Entraînement au calcul mental : additions, soustractions, multiplications et divisions chronométrées.">
+  <meta name="description" content="Entraînement au calcul mental : additions, soustractions, multiplications et divisions, avec une note de rapidité et des statistiques de progression.">
   <title>Calcul mental</title>
   <link rel="stylesheet" href="css/style.css">
   <!-- Chargés dans le <head> pour appliquer le thème avant le premier affichage -->
@@ -17,15 +17,22 @@
   <header class="site-header">
     <div class="header-inner">
       <h1 class="site-title">Calcul mental</h1>
-      <button type="button" class="theme-toggle" id="theme-toggle">
-        <span class="theme-icon" id="icon-moon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </span>
-        <span class="theme-icon" id="icon-sun" aria-hidden="true" hidden>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-        </span>
-        <span class="theme-toggle-text" id="theme-toggle-text">Thème sombre</span>
-      </button>
+      <div class="header-actions">
+        <!-- Onglets : masqués pendant une partie -->
+        <nav class="site-nav" id="site-nav" aria-label="Navigation principale">
+          <button type="button" class="nav-link" data-nav="home" aria-current="page">Jouer</button>
+          <button type="button" class="nav-link" data-nav="profile">Profil</button>
+        </nav>
+        <button type="button" class="theme-toggle" id="theme-toggle">
+          <span class="theme-icon" id="icon-moon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+          <span class="theme-icon" id="icon-sun" aria-hidden="true" hidden>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </span>
+          <span class="theme-toggle-text" id="theme-toggle-text">Thème sombre</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -139,75 +146,6 @@
         </fieldset>
 
         <fieldset class="field">
-          <legend class="label">Temps par question</legend>
-          <div class="chips chips-6">
-            <label class="chip">
-              <input type="radio" name="time" value="3" class="visually-hidden">
-              <span class="chip-face">3 s</span>
-            </label>
-            <label class="chip">
-              <input type="radio" name="time" value="5" class="visually-hidden">
-              <span class="chip-face">5 s</span>
-            </label>
-            <label class="chip">
-              <input type="radio" name="time" value="10" class="visually-hidden">
-              <span class="chip-face">10 s</span>
-            </label>
-            <label class="chip">
-              <input type="radio" name="time" value="15" class="visually-hidden">
-              <span class="chip-face">15 s</span>
-            </label>
-            <label class="chip">
-              <input type="radio" name="time" value="30" class="visually-hidden">
-              <span class="chip-face">30 s</span>
-            </label>
-            <label class="chip">
-              <input type="radio" name="time" value="0" class="visually-hidden">
-              <span class="chip-face">Illimité</span>
-            </label>
-          </div>
-          <div class="field-help">
-            <div class="help" data-help>
-              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-time">
-                <span class="help-icon" aria-hidden="true">?</span>
-                <span class="help-title">Comprendre le temps par question</span>
-              </button>
-              <div class="help-panel" id="help-time">
-                <div class="help-panel-inner">
-                  <dl class="help-list">
-                    <div class="help-item">
-                      <dt>3 s</dt>
-                      <dd>Réflexe pur : à réserver aux calculs connus par cœur, comme les tables.</dd>
-                    </div>
-                    <div class="help-item">
-                      <dt>5 s</dt>
-                      <dd>Rapide : juste le temps d'un calcul simple.</dd>
-                    </div>
-                    <div class="help-item">
-                      <dt>10 s</dt>
-                      <dd>Rythme standard, adapté au niveau Moyen.</dd>
-                    </div>
-                    <div class="help-item">
-                      <dt>15 s</dt>
-                      <dd>Confortable : laisse le temps de calculer en plusieurs étapes.</dd>
-                    </div>
-                    <div class="help-item">
-                      <dt>30 s</dt>
-                      <dd>Large : pour le niveau Difficile, ou pour apprendre sans pression.</dd>
-                    </div>
-                    <div class="help-item">
-                      <dt>Illimité</dt>
-                      <dd>Aucun chronomètre, seule la justesse compte. Le temps de réponse moyen est quand même mesuré.</dd>
-                    </div>
-                  </dl>
-                  <p class="help-note">Avec un chronomètre, une barre se vide pendant la question (orange sous 30 %, rouge sous 15 %). Si elle arrive au bout, la question compte comme une erreur et la bonne réponse s'affiche.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset class="field">
           <legend class="label">Type de partie</legend>
           <div class="chips chips-2">
             <label class="chip">
@@ -230,11 +168,11 @@
                   <dl class="help-list">
                     <div class="help-item">
                       <dt>Série</dt>
-                      <dd>Un nombre fixe de questions, choisi juste en dessous. À la fin : score, pourcentage, temps moyen et liste des erreurs.</dd>
+                      <dd>Un nombre fixe de questions, choisi juste en dessous. À la fin : score, pourcentage, temps moyen, note de rapidité et liste des erreurs.</dd>
                     </div>
                     <div class="help-item">
                       <dt>Survie</dt>
-                      <dd>Les questions s'enchaînent sans limite. Chaque réponse fausse ou temps écoulé coûte une des 3 vies, et la partie s'arrête à la 3e erreur. Le score est le nombre de bonnes réponses.</dd>
+                      <dd>Les questions s'enchaînent sans limite. Chaque réponse fausse coûte une des 3 vies, et la partie s'arrête à la 3e erreur. Le score est le nombre de bonnes réponses.</dd>
                     </div>
                   </dl>
                   <p class="help-note">Chaque combinaison de réglages a son propre record.</p>
@@ -290,34 +228,216 @@
           </div>
         </fieldset>
 
+        <!-- Pas de temps imparti : explication du barème de rapidité -->
+        <div class="field">
+          <p class="label field-label">Note de rapidité</p>
+          <div class="field-help">
+            <div class="help" data-help>
+              <button type="button" class="help-toggle" aria-expanded="false" aria-controls="help-speed">
+                <span class="help-icon" aria-hidden="true">?</span>
+                <span class="help-title">Comprendre la note de rapidité</span>
+              </button>
+              <div class="help-panel" id="help-speed">
+                <div class="help-panel-inner">
+                  <dl class="help-list help-list--cols" id="speed-scale">
+                    <div class="help-item">
+                      <dt>Réflexe · 20 points</dt>
+                      <dd>Bonne réponse en 3 s ou moins.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Rapide · 16 points</dt>
+                      <dd>Entre 3 et 5 s.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Standard · 12 points</dt>
+                      <dd>Entre 5 et 10 s.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Posé · 8 points</dt>
+                      <dd>Entre 10 et 15 s.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Lent · 4 points</dt>
+                      <dd>Entre 15 et 30 s.</dd>
+                    </div>
+                    <div class="help-item">
+                      <dt>Très lent · 0 point</dt>
+                      <dd>Plus de 30 s.</dd>
+                    </div>
+                  </dl>
+                  <p class="help-note">La note d'une partie est la moyenne des points de vos bonnes réponses, sur 20. Une réponse fausse ne rapporte aucun point : elle compte dans le pourcentage de réussite, pas dans la note. Le barème est le même pour toutes les difficultés.</p>
+                </div>
+              </div>
+            </div>
+            <p class="hint">Pas de limite de temps : un chronomètre discret mesure chaque réponse pour calculer une note sur 20.</p>
+          </div>
+        </div>
+
         <p class="home-record" id="home-record"></p>
 
         <div class="actions">
           <button type="submit" class="btn btn-primary btn-block">Commencer</button>
-          <button type="button" class="btn btn-secondary btn-block" id="btn-open-history">Historique &amp; records</button>
         </div>
       </form>
     </section>
 
-    <!-- ========== Écran 2 : historique & records ========== -->
-    <section class="screen" id="screen-history" aria-labelledby="history-title" hidden>
-      <div class="card">
-        <h2 class="card-title" id="history-title" tabindex="-1" data-autofocus>Records par configuration</h2>
-        <p class="empty" id="records-empty">Aucun record pour l'instant. Jouez une partie pour en établir un.</p>
-        <ul class="list" id="records-list"></ul>
+    <!-- ========== Écran 2 : profil (statistiques et graphiques) ========== -->
+    <section class="screen" id="screen-profile" aria-labelledby="profile-title" hidden>
+      <div class="page-head">
+        <h2 class="page-title" id="profile-title" tabindex="-1" data-autofocus>Profil</h2>
+        <p class="page-subtitle" id="profile-subtitle"></p>
       </div>
 
-      <div class="card">
-        <h2 class="card-title">20 dernières parties</h2>
-        <p class="empty" id="history-empty">Aucune partie enregistrée.</p>
-        <ul class="list" id="history-list"></ul>
-        <p class="hint" id="storage-warning" hidden>La sauvegarde locale est indisponible dans ce navigateur : l'historique et les records seront perdus à la fermeture de la page.</p>
+      <div class="card profile-empty" id="profile-empty" hidden>
+        <p class="empty">Aucune partie enregistrée pour l'instant. Jouez une première partie : vos statistiques et vos courbes de progression apparaîtront ici.</p>
+        <button type="button" class="btn btn-primary" id="btn-profile-play">Jouer une partie</button>
       </div>
 
-      <div class="actions">
-        <button type="button" class="btn btn-danger btn-block" id="btn-clear-history">Effacer l'historique</button>
-        <button type="button" class="btn btn-secondary btn-block" id="btn-history-back">Retour à l'accueil</button>
+      <div class="profile-content" id="profile-content">
+        <!-- Les filtres s'appliquent à tout ce qui suit -->
+        <form class="filters" id="profile-filters" aria-label="Filtrer les statistiques">
+          <label class="filter">
+            <span class="filter-label">Difficulté</span>
+            <select class="select" id="filter-difficulty" name="difficulty">
+              <option value="all">Toutes</option>
+              <option value="facile">Facile</option>
+              <option value="moyen">Moyen</option>
+              <option value="difficile">Difficile</option>
+            </select>
+          </label>
+          <label class="filter">
+            <span class="filter-label">Opération</span>
+            <select class="select" id="filter-op" name="op">
+              <option value="all">Toutes</option>
+              <option value="add">+ Addition</option>
+              <option value="sub">− Soustraction</option>
+              <option value="mul">× Multiplication</option>
+              <option value="div">÷ Division</option>
+            </select>
+          </label>
+        </form>
+
+        <p class="card empty" id="filter-empty" hidden>Aucune partie ne correspond à ces filtres.</p>
+
+        <div class="profile-body" id="profile-body">
+          <section class="card" aria-labelledby="kpis-title">
+            <h3 class="card-title" id="kpis-title">Vue d'ensemble</h3>
+            <dl class="kpis" id="kpis"></dl>
+            <p class="hint kpi-compare" id="kpi-compare" hidden></p>
+          </section>
+
+          <section class="card" aria-labelledby="evolution-title">
+            <h3 class="card-title" id="evolution-title">Évolution</h3>
+            <div class="chart-head">
+              <p class="chart-intro">Une valeur par partie, de la plus ancienne (à gauche) à la plus récente.</p>
+              <ul class="legend" aria-label="Légende des courbes">
+                <li class="legend-item"><span class="legend-key legend-key--raw" aria-hidden="true"></span>Chaque partie</li>
+                <li class="legend-item"><span class="legend-key legend-key--avg" aria-hidden="true"></span>Moyenne sur 5 parties</li>
+              </ul>
+            </div>
+            <figure class="chart-figure">
+              <figcaption class="chart-caption">Taux de réussite</figcaption>
+              <div id="chart-rate"></div>
+              <p class="empty" id="chart-rate-empty" hidden>Pas encore de données pour ces parties.</p>
+            </figure>
+            <figure class="chart-figure">
+              <figcaption class="chart-caption">Temps moyen par question <span class="chart-caption-note">plus bas = plus rapide</span></figcaption>
+              <div id="chart-time"></div>
+              <p class="empty" id="chart-time-empty" hidden>Pas encore de temps mesuré pour ces parties.</p>
+            </figure>
+            <figure class="chart-figure">
+              <figcaption class="chart-caption">Note de rapidité <span class="chart-caption-note">sur 20</span></figcaption>
+              <div id="chart-note"></div>
+              <p class="empty" id="chart-note-empty" hidden>Pas encore de note de rapidité pour ces parties.</p>
+            </figure>
+            <details class="table-view" id="evolution-details">
+              <summary>Voir les données en tableau</summary>
+              <div class="table-scroll">
+                <table class="table table--compact">
+                  <thead>
+                    <tr>
+                      <th scope="col">N°</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Configuration</th>
+                      <th scope="col">Réussite</th>
+                      <th scope="col">Temps moyen</th>
+                      <th scope="col">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody id="evolution-body"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+
+          <section class="card" aria-labelledby="activity-title">
+            <h3 class="card-title" id="activity-title">Activité · 30 derniers jours</h3>
+            <p class="chart-intro" id="activity-summary"></p>
+            <div id="chart-activity"></div>
+            <p class="empty" id="activity-empty" hidden>Aucune partie ces 30 derniers jours.</p>
+            <details class="table-view" id="activity-details">
+              <summary>Voir les données en tableau</summary>
+              <div class="table-scroll">
+                <table class="table table--compact">
+                  <thead>
+                    <tr>
+                      <th scope="col">Jour</th>
+                      <th scope="col">Parties</th>
+                      <th scope="col">Questions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="activity-body"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+
+          <section class="card" aria-labelledby="ops-title">
+            <h3 class="card-title" id="ops-title">Par opération</h3>
+            <div class="table-wrap">
+              <table class="table ops-table" id="ops-table">
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="ops-label">Opération</span></th>
+                    <th scope="col" class="ops-count">Questions</th>
+                    <th scope="col">Réussite</th>
+                    <th scope="col">Temps moyen</th>
+                    <th scope="col">Note</th>
+                  </tr>
+                </thead>
+                <tbody id="ops-body"></tbody>
+              </table>
+            </div>
+            <p class="empty" id="ops-empty" hidden>Le détail par opération est disponible pour les parties jouées depuis l'ajout du profil.</p>
+          </section>
+
+          <section class="card" aria-labelledby="tiers-title">
+            <h3 class="card-title" id="tiers-title">Répartition des temps</h3>
+            <p class="chart-intro">Vos bonnes réponses, classées selon les paliers du barème de rapidité.</p>
+            <ul class="tier-list" id="profile-tiers"></ul>
+            <p class="hint" id="profile-tiers-note"></p>
+            <p class="empty" id="profile-tiers-empty" hidden>Pas encore de bonne réponse chronométrée pour ces parties.</p>
+          </section>
+
+          <section class="card" aria-labelledby="records-title">
+            <h3 class="card-title" id="records-title">Records par configuration</h3>
+            <p class="empty" id="records-empty">Aucun record pour l'instant.</p>
+            <ul class="list" id="records-list"></ul>
+          </section>
+
+          <section class="card" aria-labelledby="history-title">
+            <h3 class="card-title" id="history-title">20 dernières parties</h3>
+            <p class="empty" id="history-empty">Aucune partie enregistrée.</p>
+            <ul class="list" id="history-list"></ul>
+          </section>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-danger btn-block" id="btn-clear-stats">Effacer toutes les statistiques</button>
+        </div>
       </div>
+
+      <p class="hint" id="storage-warning" hidden>La sauvegarde locale est indisponible dans ce navigateur : les parties et les statistiques seront perdues à la fermeture de la page.</p>
     </section>
 
     <!-- ========== Écran 3 : partie en cours ========== -->
@@ -351,11 +471,6 @@
       </div>
 
       <div class="card game-card" id="game-card">
-        <div class="timer" id="timer">
-          <div class="timer-track" aria-hidden="true"><div class="timer-fill" id="timer-fill"></div></div>
-          <span class="timer-count" id="timer-count">10,0 s</span>
-        </div>
-
         <!-- Affichage visuel du calcul ; la version lue par les lecteurs d'écran est juste dessous -->
         <p class="question" id="question" aria-hidden="true"><span id="q-a">0</span> <span id="q-op">+</span> <span id="q-b">0</span> = <span class="question-answer" id="q-answer">?</span></p>
         <p class="visually-hidden" id="question-spoken" aria-live="polite"></p>
@@ -372,7 +487,7 @@
         <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
       </div>
 
-      <p class="game-hint"><kbd>Entrée</kbd> pour valider · <kbd>Échap</kbd> pour abandonner</p>
+      <p class="game-hint">Pas de limite de temps · <kbd>Entrée</kbd> pour valider · <kbd>Échap</kbd> pour abandonner</p>
     </section>
 
     <!-- ========== Écran 4 : résultats ========== -->
@@ -393,10 +508,22 @@
             <dd id="res-avg">—</dd>
           </div>
           <div class="results-stat">
+            <dt class="stat-label">Note de rapidité</dt>
+            <dd id="res-note">—</dd>
+          </div>
+          <div class="results-stat">
             <dt class="stat-label">Meilleure série</dt>
             <dd id="res-streak">0</dd>
           </div>
         </dl>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Rapidité</h2>
+        <p class="chart-intro">Vos bonnes réponses, classées selon le barème. La note est la moyenne de leurs points.</p>
+        <ul class="tier-list" id="res-tiers"></ul>
+        <p class="hint" id="res-tiers-note">Le barème est le même pour toutes les difficultés.</p>
+        <p class="empty" id="res-tiers-empty" hidden>Aucune bonne réponse : pas de note de rapidité pour cette partie.</p>
       </div>
 
       <div class="card">
@@ -434,7 +561,11 @@
   </dialog>
 
   <script src="js/generator.js"></script>
+  <script src="js/stats.js"></script>
   <script src="js/timer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

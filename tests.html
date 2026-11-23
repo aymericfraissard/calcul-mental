@@ -34,9 +34,27 @@
       </table>
       <ul class="test-failures" id="failures" hidden></ul>
     </section>
+
+    <section class="card" aria-labelledby="stats-tests-title">
+      <h2 class="card-title" id="stats-tests-title">Barème, chronomètre et statistiques</h2>
+      <p class="test-summary" id="stats-summary" role="status">Exécution des tests…</p>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Vérification</th>
+            <th scope="col">Statut</th>
+          </tr>
+        </thead>
+        <tbody id="stats-results"></tbody>
+      </table>
+    </section>
   </main>
 
   <script src="js/generator.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/charts.js"></script>
   <script>
     /* Tests du générateur : 1000 questions par combinaison opération × difficulté. */
     (function () {
@@ -211,6 +229,274 @@
       });
       runValidationTests();
       showSummary();
+    })();
+  </script>
+  <script>
+    /* Tests du barème, du chronomètre et des statistiques (fonctions pures). */
+    (function () {
+      'use strict';
+
+      const checks = [];
+
+      /** Une vérification : la fonction renvoie true, ou un message d'échec. */
+      function check(name, fn) {
+        let result;
+        try {
+          result = fn();
+        } catch (error) {
+          result = 'exception : ' + error.message;
+        }
+        checks.push({ name: name, ok: result === true, detail: result === true ? '' : String(result) });
+      }
+
+      function same(actual, expected) {
+        const a = JSON.stringify(actual);
+        const e = JSON.stringify(expected);
+        return a === e ? true : 'obtenu ' + a + ', attendu ' + e;
+      }
+
+      function near(actual, expected) {
+        return Math.abs(actual - expected) < 1e-9 ? true : 'obtenu ' + actual + ', attendu ' + expected;
+      }
+
+      function q(op) {
+        return { op: op };
+      }
+
+      /** Partie enregistrée fictive (format v2). */
+      function game(date, difficulty, operations, ops, extra) {
+        const record = {
+          v: 2, date: date, operations: operations, difficulty: difficulty, mode: 'serie', count: 10,
+          correct: 0, total: 0, ms: 0, bestStreak: 0, ops: ops
+        };
+        Object.keys(ops).forEach(function (op) {
+          record.correct += ops[op].c;
+          record.total += ops[op].n;
+          record.ms += ops[op].ms;
+        });
+        return Object.assign(record, extra || {});
+      }
+
+      function counters(n, c, ms, pts, tiers) {
+        return { n: n, c: c, ms: ms, pts: pts, tiers: tiers };
+      }
+
+      /** Ancienne partie : score seulement. */
+      function legacy(date, difficulty, operations, correct, total) {
+        return {
+          v: 1, date: date, operations: operations, difficulty: difficulty, mode: 'serie', count: total,
+          correct: correct, total: total, ms: null, bestStreak: null, ops: null
+        };
+      }
+
+      /* ---------- Barème ---------- */
+
+      check('Barème : points 20 / 16 / 12 / 8 / 4 / 0', function () {
+        return same(Stats.TIERS.map(function (t) { return t.points; }), [20, 16, 12, 8, 4, 0]);
+      });
+
+      check('Barème : seuils inclus et arrondi au dixième affiché', function () {
+        const cases = [[0, 0], [2999, 0], [3000, 0], [3049, 0], [3050, 1], [5000, 1], [5049, 1],
+          [5050, 2], [10000, 2], [10050, 3], [15000, 3], [30000, 4], [30049, 4], [30050, 5], [600000, 5]];
+        const wrong = cases.filter(function (c) { return Stats.tierIndex(c[0]) !== c[1]; });
+        return wrong.length === 0 ? true : 'paliers faux pour ' + wrong.map(function (c) { return c[0] + ' ms'; }).join(', ');
+      });
+
+      check('Note : aucune bonne réponse = pas de note', function () {
+        return same(Stats.speedNote(0, 0), null);
+      });
+
+      /* ---------- Enregistrement d'une partie ---------- */
+
+      const built = Stats.buildGameRecord(
+        { operations: ['add', 'mul'], difficulty: 'moyen', mode: 'serie', count: 3 },
+        [
+          { question: q('add'), ms: 2000, isCorrect: true },
+          { question: q('add'), ms: 4000, isCorrect: false },
+          { question: q('mul'), ms: 6000.4, isCorrect: true }
+        ],
+        1,
+        '2026-11-18T10:00:00.000Z'
+      );
+
+      check('Partie : score, total et temps cumulés', function () {
+        return same([built.correct, built.total, built.ms, built.bestStreak], [2, 3, 12000, 1]);
+      });
+
+      check('Partie : compteurs par opération', function () {
+        return same(built.ops, {
+          add: counters(2, 1, 6000, 20, [1, 0, 0, 0, 0, 0]),
+          mul: counters(1, 1, 6000, 12, [0, 0, 1, 0, 0, 0])
+        });
+      });
+
+      check('Partie : note = moyenne des points des bonnes réponses', function () {
+        const totals = Stats.totalsOf(built);
+        return near(Stats.speedNote(totals.pts, totals.c), 16);
+      });
+
+      /* ---------- Filtres et agrégats ---------- */
+
+      const games = [
+        legacy('2026-11-01T09:00:00.000Z', 'facile', ['add'], 8, 10),
+        legacy('2026-11-02T09:00:00.000Z', 'moyen', ['add', 'mul'], 5, 10),
+        game('2026-11-03T09:00:00.000Z', 'facile', ['add'], { add: counters(10, 9, 30000, 160, [5, 3, 1, 0, 0, 0]) }, { bestStreak: 6 }),
+        game('2026-11-04T09:00:00.000Z', 'moyen', ['add', 'mul'], {
+          add: counters(5, 4, 25000, 48, [0, 2, 1, 1, 0, 0]),
+          mul: counters(5, 5, 10000, 100, [5, 0, 0, 0, 0, 0])
+        }, { bestStreak: 9 })
+      ];
+
+      check('Filtre : toutes les parties', function () {
+        return same(Stats.select(games, { difficulty: 'all', op: 'all' }).length, 4);
+      });
+
+      check('Filtre : difficulté', function () {
+        return same(Stats.select(games, { difficulty: 'facile', op: 'all' }).map(function (s) { return s.game.date.slice(8, 10); }), ['01', '03']);
+      });
+
+      check('Filtre : opération (anciennes parties mixtes exclues)', function () {
+        const add = Stats.select(games, { difficulty: 'all', op: 'add' });
+        const mul = Stats.select(games, { difficulty: 'all', op: 'mul' });
+        return same([add.length, mul.length, mul[0].n, mul[0].c], [3, 1, 5, 5]);
+      });
+
+      check('Synthèse : réussite sur tout, temps et note sur les parties chronométrées', function () {
+        const s = Stats.summarize(Stats.select(games, { difficulty: 'all', op: 'all' }));
+        const errors = [];
+        if (s.questions !== 40 || s.correct !== 31) errors.push('questions/correctes ' + s.questions + '/' + s.correct);
+        if (Math.abs(s.rate - 31 / 40) > 1e-9) errors.push('réussite ' + s.rate);
+        if (Math.abs(s.avgMs - 65000 / 20) > 1e-9) errors.push('temps moyen ' + s.avgMs);
+        if (Math.abs(s.note - 308 / 18) > 1e-9) errors.push('note ' + s.note);
+        if (s.bestStreak !== 9) errors.push('meilleure série ' + s.bestStreak);
+        return errors.length === 0 ? true : errors.join(', ');
+      });
+
+      check('Évolution : une valeur par partie, null si inconnue', function () {
+        const slices = Stats.select(games, { difficulty: 'all', op: 'all' });
+        const time = Stats.evolution(slices, 'time').map(function (p) { return p.value; });
+        return same(time, [null, null, 3, 3.5]);
+      });
+
+      check('Moyenne glissante sur 5 parties (trous ignorés)', function () {
+        return same(Stats.movingAverage([10, null, 20, 30, 40, 50, 60], 5), [10, null, 15, 20, 25, 35, 40]);
+      });
+
+      check('Activité : questions par jour (heure locale)', function () {
+        const day = function (d, h) { return new Date(2026, 10, d, h).toISOString(); };
+        const slices = Stats.select([
+          game(day(10, 9), 'facile', ['add'], { add: counters(10, 10, 1, 0, [0, 0, 0, 0, 0, 0]) }),
+          game(day(16, 23), 'facile', ['add'], { add: counters(20, 10, 1, 0, [0, 0, 0, 0, 0, 0]) }),
+          game(day(18, 0), 'facile', ['add'], { add: counters(10, 10, 1, 0, [0, 0, 0, 0, 0, 0]) }),
+          game(day(18, 9), 'facile', ['add'], { add: counters(5, 5, 1, 0, [0, 0, 0, 0, 0, 0]) })
+        ], { difficulty: 'all', op: 'all' });
+        const result = Stats.activity(slices, 3, new Date(2026, 10, 18, 12));
+        return same(result.map(function (d) { return [d.key, d.questions, d.games]; }),
+          [['2026-11-16', 20, 1], ['2026-11-17', 0, 0], ['2026-11-18', 15, 2]]);
+      });
+
+      check('Par opération : une ligne par opération jouée', function () {
+        const rows = Stats.byOperation(games, { difficulty: 'all', op: 'all' });
+        return same(rows.map(function (r) { return [r.op, r.questions]; }), [['add', 25], ['mul', 5]]);
+      });
+
+      check('Paliers : bonnes réponses chronométrées seulement', function () {
+        return same(Stats.tierCounts(Stats.select(games, { difficulty: 'all', op: 'all' })), [10, 5, 2, 1, 0, 0]);
+      });
+
+      /* ---------- Records ---------- */
+
+      check('Clé de configuration : sans le temps, opérations triées', function () {
+        return same(Stats.configKey({ operations: ['mul', 'add'], difficulty: 'moyen', mode: 'serie', count: 20 }),
+          'ops=add+mul|diff=moyen|mode=serie-20');
+      });
+
+      check('Record : plus de bonnes réponses, ou à égalité un temps moyen plus court', function () {
+        const base = { correct: 8, total: 10, ms: 30000 };
+        const errors = [];
+        if (Stats.isBetter({ correct: 0, total: 10, ms: 1 }, null)) errors.push('0 bonne réponse compté comme record');
+        if (!Stats.isBetter({ correct: 1, total: 10, ms: 1 }, null)) errors.push('premier score non retenu');
+        if (!Stats.isBetter({ correct: 9, total: 10, ms: 90000 }, base)) errors.push('meilleur score refusé');
+        if (!Stats.isBetter({ correct: 8, total: 10, ms: 20000 }, base)) errors.push('égalité plus rapide refusée');
+        if (Stats.isBetter({ correct: 8, total: 10, ms: 30000 }, base)) errors.push('égalité stricte acceptée');
+        if (Stats.isBetter({ correct: 8, total: 10, ms: null }, base)) errors.push('temps inconnu accepté');
+        return errors.length === 0 ? true : errors.join(', ');
+      });
+
+      check('Records : un par configuration', function () {
+        const list = Stats.records(games.concat([
+          game('2026-11-05T09:00:00.000Z', 'facile', ['add'], { add: counters(10, 10, 20000, 200, [10, 0, 0, 0, 0, 0]) })
+        ]));
+        // Deux configurations : Facile + (01, 03, 05) et Moyen + × (02, 04)
+        return same(list.map(function (g) { return g.date.slice(8, 10); }), ['05', '04']);
+      });
+
+      /* ---------- Chronomètre ---------- */
+
+      check('Chronomètre : temps écoulé, pause et reprise', function () {
+        let fake = 1000;
+        const hadOwn = Object.prototype.hasOwnProperty.call(performance, 'now');
+        performance.now = function () { return fake; };
+        try {
+          const steps = [];
+          Timer.start();
+          fake = 3000; steps.push(Timer.elapsed());
+          Timer.pause();
+          fake = 10000; steps.push(Timer.elapsed());
+          Timer.resume();
+          fake = 10500; steps.push(Timer.elapsed());
+          Timer.stop();
+          fake = 20000; steps.push(Timer.elapsed(), Timer.isActive());
+          return same(steps, [2000, 2000, 2500, 2500, false]);
+        } finally {
+          if (!hadOwn) delete performance.now;
+        }
+      });
+
+      /* ---------- Formatage et échelles ---------- */
+
+      check('Formatage français des durées et libellés', function () {
+        return same([
+          Ui.formatSeconds(2440),
+          Ui.formatPercent(0.724),
+          Ui.formatTotalTime(45000),
+          Ui.formatTotalTime(3900000),
+          Ui.formatConfigLabel({ operations: ['add', 'mul'], difficulty: 'moyen', mode: 'serie', count: 20 })
+        ], ['2,4 s', '72 %', '45 s', '1 h 05', 'Mixte + × · Moyen · Série de 20']);
+      });
+
+      check('Échelles : graduations rondes, entières pour des quantités', function () {
+        return same([Charts.niceScale(7, 3, true), Charts.niceScale(4.3, 4, false)],
+          [{ max: 10, ticks: [0, 5, 10] }, { max: 6, ticks: [0, 2, 4, 6] }]);
+      });
+
+      /* ---------- Affichage ---------- */
+
+      const body = document.getElementById('stats-results');
+      checks.forEach(function (item) {
+        const row = document.createElement('tr');
+        const name = document.createElement('td');
+        name.textContent = item.name;
+        const status = document.createElement('td');
+        status.textContent = item.ok ? 'OK' : 'Échec : ' + item.detail;
+        status.className = item.ok ? 'is-right' : 'is-wrong';
+        row.appendChild(name);
+        row.appendChild(status);
+        body.appendChild(row);
+      });
+
+      const failed = checks.filter(function (item) { return !item.ok; });
+      const summary = document.getElementById('stats-summary');
+      summary.className = 'test-summary ' + (failed.length === 0 ? 'is-correct' : 'is-wrong');
+      summary.textContent = failed.length === 0
+        ? 'Toutes les vérifications sont passées (' + checks.length + ').'
+        : failed.length + ' vérification(s) en échec sur ' + checks.length + '.';
+
+      window.statsTestResults = {
+        ok: failed.length === 0,
+        count: checks.length,
+        failures: failed.map(function (item) { return item.name + ' → ' + item.detail; })
+      };
     })();
   </script>
 </body>

@@ -1,23 +1,30 @@
 /* =========================================================
    storage.js — Persistance locale (configuration, thème,
-   historique, records)
+   parties jouées)
    ---------------------------------------------------------
    Toutes les lectures / écritures passent par ce fichier.
    localStorage est encapsulé dans des try/catch : s'il est
    indisponible (navigation privée, quota, file:// bloqué…),
    les données sont gardées en mémoire le temps de la session
    et l'application continue de fonctionner.
+
+   Chaque partie terminée est enregistrée en entier (voir
+   Stats.buildGameRecord) : l'historique, les records et les
+   statistiques du profil en sont tous déduits.
    ========================================================= */
 
 const Store = (function () {
   'use strict';
 
   const PREFIX = 'calcul-mental:';
-  const HISTORY_LIMIT = 20;
+  const GAMES_LIMIT = 2000; // environ 600 Ko au maximum
+  const OPERATIONS = ['add', 'sub', 'mul', 'div'];
+  const DIFFICULTIES = ['facile', 'moyen', 'difficile'];
 
   /** Cache en écriture : sert aussi de repli si localStorage est indisponible. */
   const memory = {};
   const backend = detectBackend();
+  let gamesCache = null; // parties décodées, de la plus ancienne à la plus récente
 
   /* ---------- Accès bas niveau ---------- */
 
@@ -104,70 +111,125 @@ const Store = (function () {
     write('theme', theme);
   }
 
-  /* ---------- Historique ---------- */
+  /* ---------- Parties ---------- */
 
-  /** Les 20 dernières parties, de la plus récente à la plus ancienne. */
-  function getHistory() {
-    const history = read('history', []);
-    return Array.isArray(history) ? history : [];
+  /** Toutes les parties, de la plus ancienne à la plus récente (copie). */
+  function getGames() {
+    if (gamesCache === null) gamesCache = loadGames();
+    return gamesCache.slice();
   }
 
-  function addHistory(entry) {
-    const history = [entry].concat(getHistory()).slice(0, HISTORY_LIMIT);
-    write('history', history);
-    return history;
+  /** Ajoute une partie terminée. Renvoie true si elle a bien été persistée. */
+  function addGame(game) {
+    const games = getGames();
+    games.push(game);
+    gamesCache = games.slice(-GAMES_LIMIT);
+    return write('games', gamesCache);
   }
 
-  /** Efface l'historique ET les records. */
-  function clearHistory() {
+  /** Efface toutes les parties (et donc l'historique, les records et le profil). */
+  function clearGames() {
+    gamesCache = [];
+    remove('games');
     remove('history');
     remove('records');
   }
 
-  /* ---------- Records par configuration ---------- */
-
-  /**
-   * Clé unique d'une configuration : opérations + difficulté + temps + type de partie
-   * (le nombre de questions fait partie du type pour une série).
-   */
-  function configKey(config) {
-    const mode = config.mode === 'serie' ? 'serie-' + config.count : 'survie';
-    return [
-      'ops=' + config.operations.slice().sort().join('+'),
-      'diff=' + config.difficulty,
-      'time=' + config.time,
-      'mode=' + mode
-    ].join('|');
+  function loadGames() {
+    const stored = read('games', []);
+    const games = (Array.isArray(stored) ? stored : []).filter(isValidGame);
+    const legacy = readLegacyGames();
+    if (legacy.length === 0) return games;
+    // Première ouverture après la mise à jour : on reprend l'ancien historique
+    const merged = mergeByDate(legacy, games).slice(-GAMES_LIMIT);
+    if (write('games', merged)) {
+      remove('history');
+      remove('records');
+    }
+    return merged;
   }
 
-  function getRecords() {
+  /** Une partie lisible : sinon elle est ignorée (stockage modifié à la main…). */
+  function isValidGame(game) {
+    return Boolean(game) && typeof game === 'object' &&
+      typeof game.date === 'string' && !isNaN(Date.parse(game.date)) &&
+      Array.isArray(game.operations) && game.operations.length > 0 &&
+      game.operations.every(function (op) { return OPERATIONS.indexOf(op) !== -1; }) &&
+      DIFFICULTIES.indexOf(game.difficulty) !== -1 &&
+      (game.mode === 'survie' || (game.mode === 'serie' && isCount(game.count) && game.count > 0)) &&
+      isCount(game.correct) && isCount(game.total) && game.correct <= game.total &&
+      (game.ops === null || isValidOps(game.ops));
+  }
+
+  function isValidOps(ops) {
+    if (!ops || typeof ops !== 'object') return false;
+    return Object.keys(ops).every(function (op) {
+      const counters = ops[op];
+      return OPERATIONS.indexOf(op) !== -1 && counters && typeof counters === 'object' &&
+        isCount(counters.n) && isCount(counters.c) && isCount(counters.ms) && isCount(counters.pts) &&
+        Array.isArray(counters.tiers) && counters.tiers.every(isCount);
+    });
+  }
+
+  function isCount(value) {
+    return typeof value === 'number' && isFinite(value) && value >= 0;
+  }
+
+  /** Fusionne deux listes de parties, sans doublon, triées par date. */
+  function mergeByDate(first, second) {
+    const seen = {};
+    return first.concat(second)
+      .filter(function (game) {
+        const id = game.date + '|' + game.operations.join('+') + '|' + game.difficulty;
+        if (seen[id]) return false;
+        seen[id] = true;
+        return true;
+      })
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+  }
+
+  /* ---------- Reprise de l'ancien format (historique + records) ---------- */
+
+  /**
+   * L'ancienne version gardait les 20 dernières parties et un record par
+   * configuration, sans le détail par question. Ces parties sont reprises
+   * avec le score seulement : temps et note de rapidité restent inconnus.
+   */
+  function readLegacyGames() {
+    const history = read('history', []);
     const records = read('records', {});
-    return records && typeof records === 'object' && !Array.isArray(records) ? records : {};
+    const entries = (Array.isArray(history) ? history : []).concat(
+      records && typeof records === 'object' && !Array.isArray(records)
+        ? Object.keys(records).map(function (key) { return records[key]; })
+        : []
+    );
+    return entries.map(convertLegacyEntry).filter(isValidGame);
   }
 
-  function getRecord(key) {
-    const records = getRecords();
-    return hasOwn(records, key) ? records[key] : null;
-  }
-
-  /**
-   * Un résultat bat le record s'il a plus de bonnes réponses,
-   * ou autant mais avec un temps de réponse moyen plus court.
-   */
-  function isBetter(result, previous) {
-    if (!previous) return result.correct > 0;
-    if (result.correct !== previous.correct) return result.correct > previous.correct;
-    return result.avgMs !== null && typeof previous.avgMs === 'number' && result.avgMs < previous.avgMs;
-  }
-
-  /** Enregistre le résultat s'il bat le record. Renvoie true si c'est un nouveau record. */
-  function saveRecord(key, result) {
-    const records = getRecords();
-    const previous = hasOwn(records, key) ? records[key] : null;
-    if (!isBetter(result, previous)) return false;
-    records[key] = result;
-    write('records', records);
-    return true;
+  /** Exemple de clé : 'ops=add+mul|diff=moyen|time=10|mode=serie-20'. */
+  function convertLegacyEntry(entry) {
+    if (!entry || typeof entry !== 'object' || typeof entry.key !== 'string') return null;
+    const parts = {};
+    entry.key.split('|').forEach(function (part) {
+      const index = part.indexOf('=');
+      if (index > 0) parts[part.slice(0, index)] = part.slice(index + 1);
+    });
+    const mode = parts.mode || '';
+    const isSerie = mode.indexOf('serie-') === 0;
+    return {
+      v: 1,
+      date: entry.date,
+      operations: (parts.ops || '').split('+').filter(Boolean)
+        .sort(function (a, b) { return OPERATIONS.indexOf(a) - OPERATIONS.indexOf(b); }),
+      difficulty: parts.diff,
+      mode: isSerie ? 'serie' : (mode === 'survie' ? 'survie' : null),
+      count: isSerie ? Number(mode.slice(6)) : null,
+      correct: entry.correct,
+      total: entry.total,
+      ms: null,
+      bestStreak: null,
+      ops: null
+    };
   }
 
   /** true si les données survivront à la fermeture de la page. */
@@ -180,13 +242,9 @@ const Store = (function () {
     saveConfig: saveConfig,
     loadTheme: loadTheme,
     saveTheme: saveTheme,
-    getHistory: getHistory,
-    addHistory: addHistory,
-    clearHistory: clearHistory,
-    configKey: configKey,
-    getRecords: getRecords,
-    getRecord: getRecord,
-    saveRecord: saveRecord,
+    getGames: getGames,
+    addGame: addGame,
+    clearGames: clearGames,
     isPersistent: isPersistent
   };
 })();
